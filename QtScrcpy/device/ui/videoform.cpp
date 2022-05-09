@@ -524,6 +524,24 @@ void VideoForm::setDevice(Device *device)
 
 void VideoForm::mousePressEvent(QMouseEvent *event)
 {
+     if( Qt::FramelessWindowHint == (windowFlags() & Qt::FramelessWindowHint)
+            && m_toolForm->isVisible())
+    {   //无窗口模式
+        if (event->button() == Qt::LeftButton)
+        {
+            isLeftPressDown = true;
+
+            if(dir != NONE)
+            {
+                this->mouseGrabber(); //返回当前抓取鼠标输入的窗口
+            }
+            else
+            {
+                m_movePoint = event->globalPos() - this->frameGeometry().topLeft();
+                //globalPos()鼠标位置，topLeft()窗口左上角的位置
+            }
+        }
+    }
     if (event->button() == Qt::MiddleButton) {
         if (m_device && !m_device->isCurrentCustomKeymap()) {
             emit m_device->postGoHome();
@@ -562,6 +580,20 @@ void VideoForm::mousePressEvent(QMouseEvent *event)
 
 void VideoForm::mouseReleaseEvent(QMouseEvent *event)
 {
+    if( Qt::FramelessWindowHint == (windowFlags() & Qt::FramelessWindowHint)
+            && m_toolForm->isVisible())
+    {   //无窗口模式
+        if (event->button() == Qt::LeftButton)
+        {
+            isLeftPressDown = false;
+            if (dir != NONE)
+            {
+                this->releaseMouse(); //释放鼠标抓取
+                this->setCursor(QCursor(Qt::ArrowCursor));
+                dir = NONE; //热心网友指正
+            }
+        }
+    }
     if (m_dragPosition.isNull()) {
         if (!m_device) {
             return;
@@ -590,6 +622,130 @@ void VideoForm::mouseReleaseEvent(QMouseEvent *event)
 
 void VideoForm::mouseMoveEvent(QMouseEvent *event)
 {
+     if( Qt::FramelessWindowHint == (windowFlags() & Qt::FramelessWindowHint)
+            && m_toolForm->isVisible())
+    {   //无窗口模式
+        QPoint globalPoint = event->globalPos();   //鼠标全局坐标
+
+        QRect rect = this->rect();  //rect == QRect(0,0 1280x720)
+        QPoint topLeft = mapToGlobal(rect.topLeft());
+        QPoint bottomRight = mapToGlobal(rect.bottomRight());
+
+        if (this->windowState() != Qt::WindowMaximized)
+        {
+            if(!isLeftPressDown)  //没有按下左键时
+            {
+                this->region(globalPoint); //窗口大小的改变——判断鼠标位置，改变光标形状
+            }
+            else
+            {
+                if(dir != NONE)
+                {
+                    QRect newRect(topLeft, bottomRight); //定义一个矩形  拖动后最大1000*1618
+
+                    switch(dir)
+                    {
+                        case LEFT:
+
+                            if(bottomRight.x() - globalPoint.x() <= this->minimumWidth())
+                            {
+                                newRect.setLeft(topLeft.x());  //小于界面的最小宽度时，设置为左上角横坐标为窗口x
+                                //只改变左边界
+                            }
+                            else
+                            {
+                                newRect.setLeft(globalPoint.x());
+                            }
+                            break;
+                        case RIGHT:
+                            newRect.setWidth(globalPoint.x() - topLeft.x());  //只能改变右边界
+                            break;
+                        case UP:
+                            if(bottomRight.y() - globalPoint.y() <= this->minimumHeight())
+                            {
+                                newRect.setY(topLeft.y());
+                            }
+                            else
+                            {
+                                newRect.setY(globalPoint.y());
+                            }
+                            break;
+                        case DOWN:
+                            newRect.setHeight(globalPoint.y() - topLeft.y());
+                            break;
+                        case LEFTTOP:
+                            if(bottomRight.x() - globalPoint.x() <= this->minimumWidth())
+                            {
+                                newRect.setX(topLeft.x());
+                            }
+                            else
+                            {
+                                newRect.setX(globalPoint.x());
+                            }
+
+                            if(bottomRight.y() - globalPoint.y() <= this->minimumHeight())
+                            {
+                                newRect.setY(topLeft.y());
+                            }
+                            else
+                            {
+                                newRect.setY(globalPoint.y());
+                            }
+                            break;
+                         case RIGHTTOP:
+                              if (globalPoint.x() - topLeft.x() >= this->minimumWidth())
+                              {
+                                  newRect.setWidth(globalPoint.x() - topLeft.x());
+                              }
+                              else
+                              {
+                                  newRect.setWidth(bottomRight.x() - topLeft.x());
+                              }
+                              if (bottomRight.y() - globalPoint.y() >= this->minimumHeight())
+                              {
+                                  newRect.setY(globalPoint.y());
+                              }
+                              else
+                              {
+                                  newRect.setY(topLeft.y());
+                              }
+                              break;
+                         case LEFTBOTTOM:
+                              if (bottomRight.x() - globalPoint.x() >= this->minimumWidth())
+                              {
+                                  newRect.setX(globalPoint.x());
+                              }
+                              else
+                              {
+                                  newRect.setX(topLeft.x());
+                              }
+                              if (globalPoint.y() - topLeft.y() >= this->minimumHeight())
+                              {
+                                  newRect.setHeight(globalPoint.y() - topLeft.y());
+                              }
+                              else
+                              {
+                                  newRect.setHeight(bottomRight.y() - topLeft.y());
+                              }
+                              break;
+                          case RIGHTBOTTOM:
+                              newRect.setWidth(globalPoint.x() - topLeft.x());
+                              newRect.setHeight(globalPoint.y() - topLeft.y());
+                              break;
+                          default:
+                              break;
+                    }
+                    this->setGeometry(newRect);
+                }
+                else
+                {
+                    move(event->globalPos() - m_movePoint); //移动窗口
+                    event->accept();
+                }
+            }
+        }
+    }
+
     if (m_videoWidget->geometry().contains(event->pos())) {
         if (!m_device) {
             return;
@@ -606,6 +762,22 @@ void VideoForm::mouseMoveEvent(QMouseEvent *event)
 
 void VideoForm::mouseDoubleClickEvent(QMouseEvent *event)
 {
+    if (event->button() == Qt::LeftButton )
+    {
+        //双击隐藏或显示工具栏
+        static bool showW = m_toolForm->isVisible();
+        showW  = (showW == true) ? false : true ;
+
+        if(false == showW)
+        {
+            m_toolForm->hide();
+        }
+        else
+        {
+            m_toolForm->show();
+        }
+    }
+
     if (event->button() == Qt::LeftButton && !m_videoWidget->geometry().contains(event->pos())) {
         if (!isMaximized()) {
             removeBlackRect();
