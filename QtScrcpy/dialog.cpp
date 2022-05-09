@@ -12,6 +12,9 @@
 #include "ui_dialog.h"
 #include "videoform.h"
 
+#include "videoform.h"
+#include "toolform.h"
+
 Dialog::Dialog(QWidget *parent) : QDialog(parent), ui(new Ui::Dialog)
 {
     ui->setupUi(this);
@@ -94,6 +97,14 @@ Dialog::Dialog(QWidget *parent) : QDialog(parent), ui(new Ui::Dialog)
         qApp->quit();
     });
     connect(m_hideIcon, &QSystemTrayIcon::activated, this, &Dialog::slotActivated);
+    
+    //测试
+   // VideoForm*   videoForm = new VideoForm(true,false);
+   // videoForm->show();
+
+   //ToolForm *m_toolForm = new ToolForm(this, ToolForm::AP_OUTSIDE_RIGHT);
+   //m_toolForm->move(100, 130);
+   //m_toolForm->setVisible(true);
 }
 
 Dialog::~Dialog()
