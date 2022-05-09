@@ -3,7 +3,8 @@
 
 #include <QPointer>
 #include <QWidget>
-
+#define PADDING 2
+enum Direction { UP=0, DOWN=1, LEFT, RIGHT, LEFTTOP, LEFTBOTTOM, RIGHTBOTTOM, RIGHTTOP, NONE };
 namespace Ui
 {
     class videoForm;
@@ -81,6 +82,13 @@ private:
 
     //outside member
     QPointer<Device> m_device;
+    
+public:
+    void region(const QPoint &currentGlobalPoint);  //鼠标的位置,改变光标
+private:
+    QPoint m_movePoint;  //鼠标的位置
+    bool isLeftPressDown;  // 判断左键是否按下
+    Direction dir;        // 窗口大小改变时，记录改变方向
 };
 
 #endif // VIDEOFORM_H
